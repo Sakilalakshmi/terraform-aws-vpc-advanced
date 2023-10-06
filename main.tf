@@ -12,6 +12,7 @@ resource "aws_vpc" "main" {
   )
 }
 
+
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -21,7 +22,7 @@ resource "aws_internet_gateway" "main" {
         Name = var.project_name
     },
     var.igw_tags
-  )  
+  )
 }
 
 resource "aws_subnet" "public" {
@@ -30,13 +31,12 @@ resource "aws_subnet" "public" {
   vpc_id     = aws_vpc.main.id
   cidr_block = var.public_subnet_cidr[count.index]
   availability_zone = local.azs[count.index]
-
   tags = merge(
     var.common_tags,
     {
         Name = "${var.project_name}-public-${local.azs[count.index]}"
     }
-  )  
+  )
 }
 
 resource "aws_subnet" "private" {
@@ -44,27 +44,26 @@ resource "aws_subnet" "private" {
   vpc_id     = aws_vpc.main.id
   cidr_block = var.private_subnet_cidr[count.index]
   availability_zone = local.azs[count.index]
-
   tags = merge(
     var.common_tags,
     {
         Name = "${var.project_name}-private-${local.azs[count.index]}"
     }
-  )  
+  )
 }
+
 
 resource "aws_subnet" "database" {
   count = length(var.database_subnet_cidr)
   vpc_id     = aws_vpc.main.id
   cidr_block = var.database_subnet_cidr[count.index]
   availability_zone = local.azs[count.index]
-
   tags = merge(
     var.common_tags,
     {
         Name = "${var.project_name}-database-${local.azs[count.index]}"
     }
-  )  
+  )
 }
 
 resource "aws_route_table" "public" {
@@ -74,21 +73,20 @@ resource "aws_route_table" "public" {
   #   cidr_block = "0.0.0.0/0"
   #   gateway_id = aws_internet_gateway.main.id
   # }
+
   tags = merge(
     var.common_tags,
     {
         Name = "${var.project_name}-public"
-    },
-    var.public_subnet_tags
+    }
   )
 }
 
-## always add seperate route
+# always add route seperately
 resource "aws_route" "public" {
   route_table_id            = aws_route_table.public.id
   destination_cidr_block    = "0.0.0.0/0"
   gateway_id = aws_internet_gateway.main.id
-  #depends_on                = [aws_route_table.testing]
 }
 
 resource "aws_eip" "eip" {
@@ -111,6 +109,7 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -118,23 +117,21 @@ resource "aws_route_table" "private" {
   #   cidr_block = "0.0.0.0/0"
   #   nat_gateway_id = aws_nat_gateway.main.id
   # }
+
   tags = merge(
     var.common_tags,
     {
         Name = "${var.project_name}-private"
     },
-    var.private_subnet_tags
+    var.private_route_table_tags
   )
 }
 
-## always add seperate route
 resource "aws_route" "private" {
   route_table_id            = aws_route_table.private.id
   destination_cidr_block    = "0.0.0.0/0"
   nat_gateway_id = aws_nat_gateway.main.id
-  #depends_on                = [aws_route_table.testing]
 }
-
 
 resource "aws_route_table" "database" {
   vpc_id = aws_vpc.main.id
@@ -143,44 +140,43 @@ resource "aws_route_table" "database" {
   #   cidr_block = "0.0.0.0/0"
   #   nat_gateway_id = aws_nat_gateway.main.id
   # }
+
   tags = merge(
     var.common_tags,
     {
         Name = "${var.project_name}-database"
     },
-    var.database_subnet_tags
+    var.database_route_table_tags
   )
 }
 
-## always add seperate route
 resource "aws_route" "database" {
   route_table_id            = aws_route_table.database.id
   destination_cidr_block    = "0.0.0.0/0"
   nat_gateway_id = aws_nat_gateway.main.id
-  #depends_on                = [aws_route_table.testing]
 }
 
 resource "aws_route_table_association" "public" {
   count = length(var.public_subnet_cidr)
-  subnet_id      = element(aws_subnet.public[*].id,count.index)
+  subnet_id      = element(aws_subnet.public[*].id, count.index)
   route_table_id = aws_route_table.public.id
 }
 
 resource "aws_route_table_association" "private" {
   count = length(var.private_subnet_cidr)
-  subnet_id      = element(aws_subnet.private[*].id,count.index)
+  subnet_id      = element(aws_subnet.private[*].id, count.index)
   route_table_id = aws_route_table.private.id
 }
 
 resource "aws_route_table_association" "database" {
   count = length(var.database_subnet_cidr)
-  subnet_id      = element(aws_subnet.database[*].id,count.index)
+  subnet_id      = element(aws_subnet.database[*].id, count.index)
   route_table_id = aws_route_table.database.id
 }
 
 resource "aws_db_subnet_group" "roboshop" {
-   name       = var.project_name
-   subnet_ids = aws_subnet.database[*].id
+  name       = var.project_name
+  subnet_ids = aws_subnet.database[*].id
 
   tags = merge(
     var.common_tags,
@@ -190,4 +186,3 @@ resource "aws_db_subnet_group" "roboshop" {
     var.db_subnet_group_tags
   )
 }
-

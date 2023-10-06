@@ -4,4 +4,4 @@ data "aws_availability_zones" "available" { #list the number of availability zon
 
 data "aws_vpc" "default" {
   default = true
-} 
+}
